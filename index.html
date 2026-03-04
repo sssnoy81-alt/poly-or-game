@@ -10,16 +10,16 @@
 html,body{
   width:100%;height:100%;
   background:#0d0820;
-  display:flex;align-items:center;justify-content:center;
-  font-family:'Varela Round',Arial,sans-serif;
   overflow:hidden;
+  font-family:'Varela Round',Arial,sans-serif;
   touch-action:none;
   -webkit-user-select:none;user-select:none;
+  position:relative;
 }
 #gw{
-  position:relative;
+  position:absolute;
   width:800px;height:560px;
-  transform-origin:top center;
+  transform-origin:top left;
 }
 canvas{display:block;border-radius:16px;
   box-shadow:0 0 60px #7c3aed55,0 0 120px #7c3aed22;}
@@ -412,6 +412,7 @@ function checkInteract() {
   // איסוף עצם
   if (!bone.got && dBone < 50 && questStep >= 1) {
     bone.got = true; questStep = 2; cooldown = 25;
+    Audio.pickup();
     showD('🐶 פולי', 'מצאתי את עצם הקסם! 🦴✨ חוזר לאור!', 3000);
     setQ('🏃 הבא את העצם לאור');
     return;
@@ -421,6 +422,7 @@ function checkInteract() {
   if (questStep===0 && dOr<60) {
     if (act) {
       questStep=1; cooldown=30;
+      Audio.talk();
       showD('👧 אור', 'פולי! שמחה שבאת! 💜 עצם הקסם אבדה — תמצא אותה בחצר!', 5000);
       setQ('🦴 מצא את עצם הקסם');
     } else {
@@ -432,6 +434,7 @@ function checkInteract() {
   if (questStep===2 && dOr<60) {
     if (act) {
       questStep=3; cooldown=30;
+      Audio.talk();
       showD('👧 אור', 'מצאת! 🎉 עכשיו לך לשער הקסום ולחץ Space!', 4500);
       setQ('🚪 פתח את שער הקסם');
     } else {
@@ -675,6 +678,7 @@ sBtns.forEach(b => {
     if (i !== sSeq[sIn.length-1]) {
       // טעות
       sLiv--; updLiv(); sBlk=true;
+      Audio.simonWrong();
       if (sLiv<=0) {
         document.getElementById('sst').textContent='💀 נכשלת! מתחיל מחדש...';
         setTimeout(() => { sSeq=[]; sLvl=1; sLiv=3; updLiv(); nextRound(); }, 2000);
@@ -686,12 +690,15 @@ sBtns.forEach(b => {
     }
 
     if (sIn.length === sSeq.length) {
+      Audio.simonRight();
       if (sLvl >= 4) {
         // ניצחון!
         document.getElementById('sst').textContent='🎉 פתחת את השער!';
         setTimeout(() => {
           document.getElementById('sim').className='';
           gate.open=true; questStep=5;
+          Audio.stopBg();
+          Audio.win();
           showD('👧 אור',
             'פוליייי!!! 🎉🎉 פתחת את שער הקסם! אתה הכי טוב בעולם! 💜🐾', 5500);
           setQ('✅ הצלחת! 🏆');
@@ -710,22 +717,165 @@ sBtns.forEach(b => {
 });
 
 // ================================================
+//  מערכת סאונד — Web Audio API (ללא קבצים חיצוניים)
+// ================================================
+const Audio = (() => {
+  let ctx = null;
+
+  function init() {
+    if (ctx) return;
+    ctx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+
+  // נגן תו בודד
+  function playNote(freq, dur, type='sine', vol=0.3, delay=0) {
+    if (!ctx) return;
+    ctx.resume();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
+    gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
+    osc.start(ctx.currentTime + delay);
+    osc.stop(ctx.currentTime + delay + dur + 0.05);
+  }
+
+  // אפקט איסוף פריט ✨
+  function pickup() {
+    init();
+    [523, 659, 784, 1047].forEach((f,i) => playNote(f, 0.15, 'sine', 0.3, i*0.07));
+  }
+
+  // אפקט דיאלוג 💬
+  function talk() {
+    init();
+    playNote(440, 0.08, 'sine', 0.15);
+    playNote(550, 0.08, 'sine', 0.15, 0.09);
+  }
+
+  // אפקט ניצחון סיימון ✅
+  function simonRight() {
+    init();
+    playNote(660, 0.1, 'sine', 0.25);
+    playNote(880, 0.15, 'sine', 0.25, 0.12);
+  }
+
+  // אפקט טעות ❌
+  function simonWrong() {
+    init();
+    playNote(200, 0.3, 'sawtooth', 0.25);
+    playNote(150, 0.3, 'sawtooth', 0.2, 0.15);
+  }
+
+  // אפקט ניצחון סופי 🎉
+  function win() {
+    init();
+    const melody = [523,659,784,1047,784,880,1047,1319];
+    melody.forEach((f,i) => playNote(f, 0.2, 'sine', 0.35, i*0.13));
+  }
+
+  // מוסיקת רקע — מלודיה קסומה בלופ
+  let bgNodes = [];
+  let bgPlaying = false;
+  let bgTimeout = null;
+
+  // תווים של מלודיה קסומה/ילדותית
+  const bgMelody = [
+    [392,0.3],[440,0.3],[494,0.3],[523,0.6],
+    [494,0.3],[440,0.3],[392,0.6],
+    [350,0.3],[392,0.3],[440,0.3],[494,0.6],
+    [440,0.3],[392,0.3],[350,0.6],
+    [392,0.3],[494,0.3],[587,0.3],[659,0.6],
+    [587,0.3],[523,0.3],[494,0.6],
+    [440,0.3],[494,0.3],[523,0.3],[587,0.6],
+    [523,0.3],[494,0.3],[440,0.9],
+  ];
+
+  // בס מלווה
+  const bgBass = [
+    [196,0.6],[196,0.6],[175,0.6],[175,0.6],
+    [165,0.6],[165,0.6],[175,0.6],[175,0.6],
+  ];
+
+  function playBgLoop() {
+    if (!bgPlaying || !ctx) return;
+
+    let t = ctx.currentTime + 0.05;
+
+    // מלודיה ראשית
+    bgMelody.forEach(([freq, dur]) => {
+      const osc  = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, t);
+      gain.gain.setValueAtTime(0.12, t);
+      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      osc.start(t); osc.stop(t + dur + 0.05);
+      t += dur;
+    });
+
+    const totalDur = bgMelody.reduce((s,[,d])=>s+d, 0);
+
+    // בס
+    let tb = ctx.currentTime + 0.05;
+    for (let rep=0; rep<4; rep++) {
+      bgBass.forEach(([freq,dur]) => {
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, tb);
+        gain.gain.setValueAtTime(0.08, tb);
+        gain.gain.exponentialRampToValueAtTime(0.001, tb + dur * 0.8);
+        osc.start(tb); osc.stop(tb + dur + 0.05);
+        tb += dur;
+      });
+    }
+
+    // לולאה
+    bgTimeout = setTimeout(playBgLoop, totalDur * 1000);
+  }
+
+  function startBg() {
+    init();
+    if (bgPlaying) return;
+    // חובה ב-Chrome/Mobile — resume אחרי gesture
+    ctx.resume().then(() => {
+      bgPlaying = true;
+      playBgLoop();
+    });
+  }
+
+  function stopBg() {
+    bgPlaying = false;
+    if (bgTimeout) clearTimeout(bgTimeout);
+  }
+
+  return { init, pickup, talk, simonRight, simonWrong, win, startBg, stopBg };
+})();
+
+// ================================================
 //  סקיילינג אוטומטי לנייד
 // ================================================
 function scaleGame() {
-  const gw   = document.getElementById('gw');
-  const vw   = window.innerWidth;
-  const vh   = window.innerHeight;
-  const scaleX = vw  / 800;
-  const scaleY = vh  / 560;
-  const scale  = Math.min(scaleX, scaleY, 1); // לא מגדיל מעל 100%
-  gw.style.transform = `scale(${scale})`;
-  // מרכז אנכית
-  const top = Math.max(0, (vh - 560*scale) / 2);
-  gw.style.marginTop = top + 'px';
+  const gw  = document.getElementById('gw');
+  const vw  = window.innerWidth;
+  const vh  = window.innerHeight;
+  // מלא את המסך לחלוטין — גם בנייד
+  const scale = Math.min(vw / 800, vh / 560);
+  gw.style.transform       = `scale(${scale})`;
+  gw.style.transformOrigin = 'top left';
+  gw.style.position        = 'absolute';
+  gw.style.left  = Math.max(0, (vw - 800*scale) / 2) + 'px';
+  gw.style.top   = Math.max(0, (vh - 560*scale) / 2) + 'px';
 }
 scaleGame();
 window.addEventListener('resize', scaleGame);
+screen.orientation && screen.orientation.addEventListener('change', scaleGame);
 // כפתור אינטרקציה נייד
 const actBtn = document.getElementById('actBtn');
 actBtn.addEventListener('pointerdown', e => { e.preventDefault(); mk['act']=true; });
@@ -734,6 +884,7 @@ actBtn.addEventListener('pointerleave',()=> { mk['act']=false; });
 
 document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('ts').style.display='none';
+  Audio.startBg();
   gameActive=true;
   initGame();
 });
