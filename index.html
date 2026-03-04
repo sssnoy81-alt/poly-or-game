@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>פולי ואור — משימת הקסם</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Varela+Round&display=swap');
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{
+  width:100%;height:100%;
+  background:#0d0820;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Varela Round',Arial,sans-serif;
+  overflow:hidden;
+  touch-action:none;
+  -webkit-user-select:none;user-select:none;
+}
+#gw{
+  position:relative;
+  width:800px;height:560px;
+  transform-origin:top center;
+}
+canvas{display:block;border-radius:16px;
+  box-shadow:0 0 60px #7c3aed55,0 0 120px #7c3aed22;}
+
+.screen{position:absolute;inset:0;border-radius:16px;display:flex;
+  flex-direction:column;align-items:center;justify-content:center;
+  gap:16px;text-align:center;padding:40px;z-index:10;}
+#ts{background:radial-gradient(ellipse at 50% 40%,#1e0a3c,#0d0820);
+  border:2px solid #7c3aed44;}
+#ws{background:radial-gradient(ellipse at 50% 40%,#052e16,#0d1f12);
+  border:2px solid #22c55e44;display:none;}
+
+.stars{position:absolute;inset:0;border-radius:16px;overflow:hidden;pointer-events:none;}
+.star{position:absolute;width:2px;height:2px;background:white;border-radius:50%;
+  animation:twinkle var(--d) infinite alternate;}
+@keyframes twinkle{from{opacity:.2;}to{opacity:1;}}
+
+.gtitle{font-size:58px;font-weight:900;color:#fff;
+  animation:glow 3s ease-in-out infinite;}
+@keyframes glow{
+  0%,100%{text-shadow:0 0 30px #a78bfa,0 0 60px #7c3aed;}
+  50%{text-shadow:0 0 60px #c4b5fd,0 0 110px #a78bfa;}
+}
+.gsub{font-size:18px;color:#c4b5fd;letter-spacing:3px;}
+
+#prevWrap{display:flex;gap:48px;align-items:flex-end;justify-content:center;}
+.prev-lbl{color:#c4b5fd;font-size:13px;margin-top:4px;text-align:center;}
+
+.btn{background:linear-gradient(135deg,#7c3aed,#a855f7);color:white;border:none;
+  padding:14px 42px;font-size:20px;font-family:inherit;border-radius:50px;
+  cursor:pointer;box-shadow:0 4px 20px #7c3aed88;transition:all .2s;letter-spacing:1px;}
+.btn:hover{transform:scale(1.07) translateY(-2px);}
+.btn:active{transform:scale(.97);}
+.btn-g{background:linear-gradient(135deg,#16a34a,#15803d);}
+.instruct{color:#a78bfa;font-size:13px;line-height:1.9;opacity:.85;}
+
+#hud{position:absolute;top:10px;left:10px;right:10px;
+  display:flex;justify-content:space-between;z-index:5;pointer-events:none;}
+.pill{background:rgba(13,8,32,.88);border:1px solid #7c3aed44;border-radius:20px;
+  padding:5px 14px;color:#c4b5fd;font-size:13px;backdrop-filter:blur(4px);}
+
+#dlg{position:absolute;bottom:10px;left:10px;right:10px;
+  background:rgba(13,8,32,.94);border:2px solid #7c3aed77;border-radius:14px;
+  padding:12px 18px;color:#e9d5ff;font-size:15px;min-height:62px;line-height:1.6;
+  z-index:5;display:none;backdrop-filter:blur(6px);}
+#dlg.v{display:block;}
+.dspk{color:#c4b5fd;font-size:12px;font-weight:700;letter-spacing:1px;margin-bottom:3px;}
+
+#sim{position:absolute;inset:0;background:rgba(8,4,20,.97);border-radius:16px;
+  display:none;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;z-index:20;}
+#sim.v{display:flex;}
+.st{font-size:28px;color:#e9d5ff;}
+.ss{font-size:14px;color:#a78bfa;}
+.sl{font-size:24px;letter-spacing:6px;}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+.sb{width:130px;height:130px;border-radius:20px;border:3px solid transparent;
+  cursor:pointer;font-size:44px;display:flex;align-items:center;justify-content:center;
+  opacity:.42;transition:all .12s;position:relative;overflow:hidden;}
+.sb::before{content:'';position:absolute;inset:0;border-radius:17px;
+  background:white;opacity:0;transition:opacity .12s;}
+.sb.lit{opacity:1;transform:scale(1.08);}
+.sb.lit::before{opacity:.2;}
+.sb[data-i="0"]{background:linear-gradient(135deg,#7c3aed,#4f46e5);border-color:#a78bfa;}
+.sb[data-i="1"]{background:linear-gradient(135deg,#dc2626,#b91c1c);border-color:#fca5a5;}
+.sb[data-i="2"]{background:linear-gradient(135deg,#16a34a,#15803d);border-color:#86efac;}
+.sb[data-i="3"]{background:linear-gradient(135deg,#d97706,#b45309);border-color:#fcd34d;}
+.sstatus{font-size:16px;color:#c4b5fd;min-height:26px;}
+
+.wtitle{font-size:52px;color:#4ade80;animation:glow2 2s ease-in-out infinite;}
+@keyframes glow2{0%,100%{text-shadow:0 0 30px #22c55e;}50%{text-shadow:0 0 60px #86efac;}}
+.wsub{color:#86efac;font-size:18px;line-height:1.8;}
+.bounce{animation:bnc 2s ease-in-out infinite;}
+@keyframes bnc{0%,100%{transform:translateY(0);}50%{transform:translateY(-14px);}}
+
+#dpad{
+  position:absolute;
+  bottom:74px;left:10px;
+  display:none;
+  flex-direction:column;align-items:center;gap:5px;z-index:5;
+}
+.drow{display:flex;gap:5px;}
+.db{
+  width:58px;height:58px;
+  background:rgba(124,58,237,.5);
+  border:2px solid #7c3aed88;
+  border-radius:14px;color:white;font-size:24px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;user-select:none;touch-action:none;
+  -webkit-tap-highlight-color:transparent;
+  active-opacity:.7;
+}
+.db:active{background:rgba(124,58,237,.8);transform:scale(.93);}
+
+/* כפתור אינטרקציה נייד */
+#actBtn{
+  position:absolute;
+  bottom:74px;right:10px;
+  width:80px;height:80px;
+  background:linear-gradient(135deg,#7c3aed,#a855f7);
+  border:3px solid #c4b5fd88;
+  border-radius:50%;color:white;font-size:13px;
+  display:none;align-items:center;justify-content:center;
+  text-align:center;line-height:1.3;
+  cursor:pointer;z-index:5;
+  box-shadow:0 4px 20px #7c3aed88;
+  -webkit-tap-highlight-color:transparent;
+}
+#actBtn:active{transform:scale(.93);}
+
+@media(max-width:900px),(pointer:coarse){
+  #dpad{display:flex;}
+  #actBtn{display:flex;}
+}
+</style>
+</head>
+<body>
+<div id="gw">
+  <canvas id="gc" width="800" height="560"></canvas>
+
+  <div id="hud">
+    <div class="pill" id="qt">🎯 דבר עם אור</div>
+    <div class="pill">🐾 פולי ואור</div>
+  </div>
+
+  <div id="dlg">
+    <div class="dspk" id="dspk"></div>
+    <div id="dtxt"></div>
+  </div>
+
+  <!-- מסך פתיחה -->
+  <div class="screen" id="ts">
+    <div class="stars" id="st1"></div>
+    <div class="gtitle">פולי ואור</div>
+    <div class="gsub">✨ משימת הקסם ✨</div>
+    <div id="prevWrap">
+      <div class="prev-char">
+        <canvas id="pp" width="80" height="100"
+          style="border-radius:10px;background:rgba(255,255,255,0.04)"></canvas>
+        <div class="prev-lbl">🐶 פולי</div>
+      </div>
+      <div class="prev-char">
+        <canvas id="po" width="70" height="120"
+          style="border-radius:10px;background:rgba(255,255,255,0.04)"></canvas>
+        <div class="prev-lbl">👧 אור</div>
+      </div>
+    </div>
+    <div class="instruct">
+      🎮 חצים / WASD להזזה &nbsp;|&nbsp; Space / Enter לדיאלוג<br>
+      עזור לפולי ולאור לפתוח את שער הקסם!
+    </div>
+    <button class="btn" id="startBtn">🚀 התחל הרפתקה!</button>
+  </div>
+
+  <!-- מסך ניצחון -->
+  <div class="screen" id="ws">
+    <div class="stars" id="st2"></div>
+    <div style="font-size:66px" class="bounce">🎉</div>
+    <div class="wtitle">ניצחתם!</div>
+    <div class="wsub">
+      פולי ואור פתחו את שער הקסם! 🌟<br>
+      הקסם חזר לחצר ✨
+    </div>
+    <button class="btn btn-g" id="restartBtn">🔄 שחק שוב</button>
+  </div>
+
+  <!-- פאזל סיימון -->
+  <div id="sim">
+    <div class="st">🔮 חידת הרונות</div>
+    <div class="ss" id="slvl">שלב 1 מתוך 4</div>
+    <div class="sl" id="sliv">❤️❤️❤️</div>
+    <div class="sg">
+      <button class="sb" data-i="0">🌀</button>
+      <button class="sb" data-i="1">🔥</button>
+      <button class="sb" data-i="2">🌿</button>
+      <button class="sb" data-i="3">⚡</button>
+    </div>
+    <div class="sstatus" id="sst">צפה ברצף...</div>
+  </div>
+
+  <!-- כפתורי מובייל -->
+  <div id="dpad">
+    <div class="drow"><div class="db" data-d="up">▲</div></div>
+    <div class="drow">
+      <div class="db" data-d="left">◀</div>
+      <div class="db" data-d="down">▼</div>
+      <div class="db" data-d="right">▶</div>
+    </div>
+  </div>
+
+  <!-- כפתור אינטרקציה נייד -->
+  <div id="actBtn">💬<br>דבר</div>
+</div>
+
+<script>
+// ================================================
+//  טעינת תמונת הספרייטים מהתיקייה
+// ================================================
+const SHEET = new Image();
+SHEET.src = 'sprites.png';
+
+// קואורדינטות מדויקות של כל ספרייט [x, y, רוחב, גובה]
+const SPR = {
+  or_idle:   [18,  40,  103, 160],
+  or_walk:  [
+    [26,  244, 96,  133],
+    [170, 245, 95,  132],
+    [318, 244, 96,  133],
+  ],
+  dog_walk: [
+    [17,  871, 114, 106],
+    [156, 870, 127, 106],
+  ],
+  dog_lie:  [300, 903, 133, 64],
+};
+
+// פונקציה לציור ספרייט (עם אפשרות להפוך אופקית)
+function drawSpr(ctx, frame, dx, dy, dw, dh, flipX=false) {
+  if (!SHEET.complete || SHEET.naturalWidth === 0) return;
+  const [sx, sy, sw, sh] = frame;
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  if (flipX) {
+    ctx.translate(dx + dw, dy);
+    ctx.scale(-1, 1);
+    ctx.drawImage(SHEET, sx, sy, sw, sh, 0, 0, dw, dh);
+  } else {
+    ctx.drawImage(SHEET, sx, sy, sw, sh, dx, dy, dw, dh);
+  }
+  ctx.restore();
+}
+
+// ================================================
+//  כוכבים במסכי פתיחה/ניצחון
+// ================================================
+function makeStars(id, n) {
+  const c = document.getElementById(id);
+  for (let i = 0; i < n; i++) {
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left   = Math.random()*100 + '%';
+    s.style.top    = Math.random()*100 + '%';
+    s.style.setProperty('--d', (1.5 + Math.random()*3) + 's');
+    s.style.animationDelay = Math.random()*3 + 's';
+    c.appendChild(s);
+  }
+}
+makeStars('st1', 80);
+makeStars('st2', 80);
+
+// תצוגת דמויות במסך הפתיחה
+SHEET.onload = () => {
+  const pp = document.getElementById('pp').getContext('2d');
+  pp.imageSmoothingEnabled = true;
+  pp.imageSmoothingQuality = 'high';
+  const [psx,psy,psw,psh] = SPR.dog_walk[0];
+  const ps = 90 / psh;
+  pp.drawImage(SHEET, psx,psy,psw,psh, (80-psw*ps)/2, 5, psw*ps, 90);
+
+  const po = document.getElementById('po').getContext('2d');
+  po.imageSmoothingEnabled = true;
+  po.imageSmoothingQuality = 'high';
+  const [osx,osy,osw,osh] = SPR.or_idle;
+  const os = 110 / osh;
+  po.drawImage(SHEET, osx,osy,osw,osh, (70-osw*os)/2, 5, osw*os, 110);
+};
+
+// ================================================
+//  מפה ומשחק
+// ================================================
+const canvas = document.getElementById('gc');
+const ctx    = canvas.getContext('2d');
+let gameActive = false;
+let tick = 0;
+
+const TILE=40, COLS=20, ROWS=14;
+
+// מפת העולם: 0=דשא 1=שביל 2=קיר 3=פרח 4=עץ
+const map = [
+  [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+  [2,0,0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,2],
+  [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+  [2,0,0,4,0,0,0,0,0,0,0,0,0,0,0,4,0,0,0,2],
+  [2,0,0,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,2],
+  [2,0,3,0,0,1,0,0,0,0,0,0,0,1,0,0,3,0,0,2],
+  [2,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,2],
+  [2,0,0,0,0,1,0,0,0,0,0,0,0,1,0,0,0,0,0,2],
+  [2,0,0,4,0,1,0,0,0,0,0,0,0,1,0,4,0,0,0,2],
+  [2,0,0,0,0,1,1,1,0,1,1,1,1,1,0,0,0,0,0,2],
+  [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+  [2,0,3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,3,0,2],
+  [2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2],
+  [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
+];
+
+// מיקום שער הקסם במפה
+const GATE_COL=8, GATE_ROW=9;
+
+let poly, orChar, bone, gate, questStep, cooldown;
+
+function initGame() {
+  poly   = { x:2*TILE+4, y:10*TILE+4, w:44, h:48, speed:3,
+             frame:0, ftick:0, lastDir:'down' };
+  orChar = { x:13*TILE,  y:5*TILE+4,  w:40, h:52 };
+  bone   = { x:2*TILE+8, y:6*TILE+8,  got:false };
+  gate   = { x:GATE_COL*TILE, y:GATE_ROW*TILE, open:false };
+  questStep = 0;
+  cooldown  = 0;
+  hideD();
+  setQ('🎯 דבר עם אור');
+  setTimeout(() => showD('🐶 פולי',
+    'הגעתי לחצר הקסום! בוא נמצא את אור! 🐾', 3500), 800);
+}
+
+// ================================================
+//  קלט מקלדת + מובייל
+// ================================================
+const keys = {}, mk = {};
+
+document.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))
+    e.preventDefault();
+});
+document.addEventListener('keyup', e => { keys[e.key] = false; });
+
+document.querySelectorAll('.db').forEach(b => {
+  b.addEventListener('pointerdown', e => { e.preventDefault(); mk[b.dataset.d]=true; });
+  b.addEventListener('pointerup',   () => { mk[b.dataset.d]=false; });
+  b.addEventListener('pointerleave',() => { mk[b.dataset.d]=false; });
+});
+
+const D = {
+  u: () => keys['ArrowUp']    || keys['w'] || keys['W'] || mk['up'],
+  d: () => keys['ArrowDown']  || keys['s'] || keys['S'] || mk['down'],
+  l: () => keys['ArrowLeft']  || keys['a'] || keys['A'] || mk['left'],
+  r: () => keys['ArrowRight'] || keys['d'] || keys['D'] || mk['right'],
+  a: () => keys[' '] || keys['Enter'] || keys['e'] || keys['E'] || mk['act'],
+};
+const moving = () => D.u()||D.d()||D.l()||D.r();
+
+// ================================================
+//  התנגשות
+// ================================================
+function canWalk(nx, ny) {
+  const p = 6;
+  const corners = [
+    [nx+p, ny+p], [nx+poly.w-p, ny+p],
+    [nx+p, ny+poly.h-p], [nx+poly.w-p, ny+poly.h-p]
+  ];
+  for (const [cx,cy] of corners) {
+    const c = Math.floor(cx/TILE), r = Math.floor(cy/TILE);
+    if (r<0||r>=ROWS||c<0||c>=COLS) return false;
+    if (map[r][c]===2 || map[r][c]===4) return false;
+    if (!gate.open && r===GATE_ROW && c===GATE_COL) return false;
+  }
+  return true;
+}
+
+// ================================================
+//  דיאלוג
+// ================================================
+let dTimer = null;
+function showD(spk, txt, dur=3500) {
+  document.getElementById('dspk').textContent = spk;
+  document.getElementById('dtxt').textContent = txt;
+  document.getElementById('dlg').className = 'v';
+  if (dTimer) clearTimeout(dTimer);
+  if (dur > 0) dTimer = setTimeout(hideD, dur);
+}
+function hideD() { document.getElementById('dlg').className = ''; }
+function setQ(t) { document.getElementById('qt').textContent = t; }
+
+function distChars(a, b) {
+  return Math.hypot((a.x+a.w/2)-(b.x+b.w/2), (a.y+a.h/2)-(b.y+b.h/2));
+}
+
+// ================================================
+//  לוגיקת קווסט
+// ================================================
+function checkInteract() {
+  if (cooldown > 0) { cooldown--; return; }
+  const act   = D.a();
+  const dOr   = distChars(poly, orChar);
+  const dBone = Math.hypot(poly.x-bone.x, poly.y-bone.y);
+  const gx    = gate.x+TILE/2, gy = gate.y+TILE/2;
+  const dGate = Math.hypot((poly.x+poly.w/2)-gx, (poly.y+poly.h/2)-gy);
+
+  // איסוף עצם
+  if (!bone.got && dBone < 50 && questStep >= 1) {
+    bone.got = true; questStep = 2; cooldown = 25;
+    showD('🐶 פולי', 'מצאתי את עצם הקסם! 🦴✨ חוזר לאור!', 3000);
+    setQ('🏃 הבא את העצם לאור');
+    return;
+  }
+
+  // שיחה עם אור — שלב 0
+  if (questStep===0 && dOr<60) {
+    if (act) {
+      questStep=1; cooldown=30;
+      showD('👧 אור', 'פולי! שמחה שבאת! 💜 עצם הקסם אבדה — תמצא אותה בחצר!', 5000);
+      setQ('🦴 מצא את עצם הקסם');
+    } else {
+      showD('👧 אור', 'לחץ Space לדבר! 💬', 1500);
+    }
+  }
+
+  // החזרת עצם לאור — שלב 2
+  if (questStep===2 && dOr<60) {
+    if (act) {
+      questStep=3; cooldown=30;
+      showD('👧 אור', 'מצאת! 🎉 עכשיו לך לשער הקסום ולחץ Space!', 4500);
+      setQ('🚪 פתח את שער הקסם');
+    } else {
+      showD('👧 אור', 'לחץ Space! 💬', 1500);
+    }
+  }
+
+  // שער — שלב 3
+  if (questStep===3 && dGate<60) {
+    if (act) {
+      questStep=4; cooldown=30; hideD(); startSimon();
+    } else {
+      showD('🚪 שער', 'לחץ Space לפתוח! ✨', 1500);
+    }
+  }
+}
+
+// ================================================
+//  ציור העולם
+// ================================================
+function drawWorld() {
+  const colors = {0:'#5a8f6a', 1:'#c8a96e', 2:'#5c4535', 3:'#5a8f6a', 4:'#5a8f6a'};
+  for (let r=0; r<ROWS; r++) {
+    for (let c=0; c<COLS; c++) {
+      const T=map[r][c], x=c*TILE, y=r*TILE;
+      ctx.fillStyle = colors[T]||'#5a8f6a';
+      ctx.fillRect(x, y, TILE, TILE);
+      if (T===2) {
+        ctx.fillStyle='#4a3728';
+        ctx.fillRect(x+2, y+2, TILE-4, TILE-4);
+      }
+      if (T===1) {
+        ctx.fillStyle='#b89055';
+        ctx.fillRect(x+2, y+2, TILE/2-3, TILE/2-3);
+        ctx.fillRect(x+TILE/2+1, y+TILE/2+1, TILE/2-3, TILE/2-3);
+      }
+      if (T===3) {
+        ctx.font='18px serif'; ctx.textAlign='center';
+        ctx.fillText('🌸', x+TILE/2, y+TILE/2+6);
+      }
+      if (T===4) {
+        ctx.font='25px serif'; ctx.textAlign='center';
+        ctx.fillText('🌲', x+TILE/2, y+TILE/2+8);
+      }
+    }
+  }
+  // קווי רשת עדינים
+  ctx.strokeStyle='rgba(0,0,0,0.04)'; ctx.lineWidth=.5;
+  for (let r=0;r<=ROWS;r++) {
+    ctx.beginPath(); ctx.moveTo(0,r*TILE); ctx.lineTo(800,r*TILE); ctx.stroke();
+  }
+  for (let c=0;c<=COLS;c++) {
+    ctx.beginPath(); ctx.moveTo(c*TILE,0); ctx.lineTo(c*TILE,560); ctx.stroke();
+  }
+}
+
+function drawGate() {
+  const x=gate.x, y=gate.y;
+  if (gate.open) {
+    ctx.fillStyle='#c8a96e'; ctx.fillRect(x,y,TILE,TILE);
+    ctx.font='22px serif'; ctx.textAlign='center';
+    ctx.fillText('🌟', x+TILE/2, y+TILE/2+7);
+  } else {
+    ctx.fillStyle='#5a2d9e'; ctx.fillRect(x+4,y,TILE-8,TILE);
+    ctx.shadowColor='#7c3aed';
+    ctx.shadowBlur = 10 + Math.sin(tick/400)*6;
+    ctx.strokeStyle='#c4b5fd'; ctx.lineWidth=2;
+    ctx.strokeRect(x+4, y, TILE-8, TILE);
+    ctx.shadowBlur=0;
+    ctx.font='16px serif'; ctx.textAlign='center';
+    ctx.fillText('🔮', x+TILE/2, y+TILE/2+6);
+  }
+}
+
+function drawBone() {
+  if (bone.got) return;
+  ctx.shadowColor='#fcd34d';
+  ctx.shadowBlur = 8 + Math.sin(tick/300)*4;
+  ctx.font='20px serif'; ctx.textAlign='center';
+  ctx.fillText('🦴', bone.x+14, bone.y+18);
+  ctx.shadowBlur=0;
+}
+
+function drawHint(x, y, txt) {
+  ctx.font='11px Varela Round,Arial';
+  const w = ctx.measureText(txt).width+14;
+  ctx.fillStyle='rgba(13,8,32,.85)';
+  ctx.beginPath(); ctx.roundRect(x-w/2, y-22, w, 18, 5); ctx.fill();
+  ctx.fillStyle='#c4b5fd'; ctx.textAlign='center';
+  ctx.fillText(txt, x, y-8);
+}
+
+// ================================================
+//  ציור דמות אור (NPC)
+// ================================================
+function drawOr() {
+  const bob = Math.sin(tick/90) * 1.5;
+  const dw=40, dh=52;
+  // צל
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(orChar.x+dw/2, orChar.y+dh+2+bob, 14,4, 0,0,Math.PI*2);
+  ctx.fill();
+  // ספרייט
+  const [sx,sy,sw,sh] = SPR.or_idle;
+  const scale = dh/sh;
+  const sdw = sw*scale;
+  drawSpr(ctx, SPR.or_idle, orChar.x+(dw-sdw)/2, orChar.y+bob, sdw, dh);
+}
+
+// ================================================
+//  ציור פולי (שחקן)
+// ================================================
+function drawPoly() {
+  const isM = moving() && questStep!==4 && questStep!==5;
+
+  // אנימציה
+  if (isM) {
+    poly.ftick++;
+    if (poly.ftick > 12) { poly.ftick=0; poly.frame=(poly.frame+1)%2; }
+  } else {
+    poly.frame=0; poly.ftick=0;
+  }
+
+  // כיוון
+  let flipX = false;
+  if (D.l() && isM) { flipX=true;  poly.lastDir='left';  }
+  else if (D.r() && isM) { flipX=false; poly.lastDir='right'; }
+  if (!isM && poly.lastDir==='left') flipX=true;
+
+  const frame = SPR.dog_walk[poly.frame];
+  const bob   = isM ? Math.sin(tick/110)*2.5 : 0;
+  const dw=44, dh=44;
+
+  // צל
+  ctx.fillStyle='rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(poly.x+dw/2, poly.y+dh+2+bob, 13,4, 0,0,Math.PI*2);
+  ctx.fill();
+
+  // ספרייט — שמירת פרופורציות
+  const [,, sw,sh] = frame;
+  const scale = Math.min(dw/sw, dh/sh);
+  const sdw=sw*scale, sdh=sh*scale;
+  drawSpr(ctx, frame, poly.x+(dw-sdw)/2, poly.y+(dh-sdh)+bob, sdw, sdh, flipX);
+}
+
+// ================================================
+//  לולאת המשחק הראשית
+// ================================================
+function loop() {
+  tick++;
+  if (!gameActive) { requestAnimationFrame(loop); return; }
+
+  // תנועת פולי
+  if (questStep!==4 && questStep!==5) {
+    let nx=poly.x, ny=poly.y;
+    if (D.u()) ny -= poly.speed;
+    if (D.d()) ny += poly.speed;
+    if (D.l()) nx -= poly.speed;
+    if (D.r()) nx += poly.speed;
+    if (canWalk(nx, poly.y)) poly.x = nx;
+    if (canWalk(poly.x, ny)) poly.y = ny;
+    poly.x = Math.max(0, Math.min(756, poly.x));
+    poly.y = Math.max(0, Math.min(508, poly.y));
+  }
+
+  checkInteract();
+  if (questStep===4) simonTick();
+
+  // ציור
+  drawWorld();
+  drawGate();
+  drawBone();
+  drawOr();
+  drawPoly();
+
+  // רמז לשחקן
+  const cx = poly.x+poly.w/2, cy = poly.y;
+  if (questStep===0 && distChars(poly,orChar)<60) drawHint(cx,cy,'[Space]');
+  if (questStep===2 && distChars(poly,orChar)<60) drawHint(cx,cy,'[Space]');
+  if (questStep===3) {
+    const gx=gate.x+TILE/2, gy=gate.y+TILE/2;
+    if (Math.hypot((poly.x+poly.w/2)-gx,(poly.y+poly.h/2)-gy)<60)
+      drawHint(cx,cy,'[Space]');
+  }
+
+  requestAnimationFrame(loop);
+}
+
+// ================================================
+//  פאזל סיימון
+// ================================================
+const sBtns = document.querySelectorAll('.sb');
+let sSeq=[], sIn=[], sLiv=3, sPhase='show', sTmr=0, sLvl=1, sBlk=false, sLast=0;
+
+function startSimon() {
+  document.getElementById('sim').className='v';
+  sSeq=[]; sLiv=3; sLvl=1;
+  sLast=performance.now();
+  updLiv(); nextRound();
+}
+function nextRound() {
+  sSeq.push(Math.floor(Math.random()*4));
+  sIn=[]; sPhase='show'; sTmr=0; sBlk=true;
+  document.getElementById('sst').textContent  = 'שלב '+sLvl+' — צפה...';
+  document.getElementById('slvl').textContent = 'שלב '+sLvl+' מתוך 4';
+}
+function updLiv() {
+  document.getElementById('sliv').textContent =
+    '❤️'.repeat(sLiv) + '🖤'.repeat(3-sLiv);
+}
+function lightBtn(i, on) {
+  sBtns.forEach(b => b.classList.remove('lit'));
+  if (on && i>=0) sBtns[i].classList.add('lit');
+}
+function simonTick() {
+  const now=performance.now(), dt=now-sLast; sLast=now;
+  if (sPhase!=='show') return;
+  sTmr += dt;
+  const ON=650, CYC=950, idx=Math.floor(sTmr/CYC);
+  if (idx >= sSeq.length) {
+    lightBtn(-1, false);
+    if (sTmr >= sSeq.length*CYC+350) {
+      sPhase='wait'; sBlk=false;
+      document.getElementById('sst').textContent='תורך! חזור על הרצף 👆';
+    }
+    return;
+  }
+  (sTmr%CYC) < ON ? lightBtn(sSeq[idx],true) : lightBtn(-1,false);
+}
+
+sBtns.forEach(b => {
+  b.addEventListener('click', () => {
+    if (sPhase!=='wait' || sBlk) return;
+    const i = parseInt(b.dataset.i);
+    sIn.push(i);
+    lightBtn(i, true);
+    setTimeout(() => lightBtn(-1,false), 200);
+
+    if (i !== sSeq[sIn.length-1]) {
+      // טעות
+      sLiv--; updLiv(); sBlk=true;
+      if (sLiv<=0) {
+        document.getElementById('sst').textContent='💀 נכשלת! מתחיל מחדש...';
+        setTimeout(() => { sSeq=[]; sLvl=1; sLiv=3; updLiv(); nextRound(); }, 2000);
+      } else {
+        document.getElementById('sst').textContent='❌ לא נכון! נסה שוב... ('+sLiv+' ❤️)';
+        setTimeout(() => { sIn=[]; sPhase='show'; sTmr=0; sBlk=true; }, 1500);
+      }
+      return;
+    }
+
+    if (sIn.length === sSeq.length) {
+      if (sLvl >= 4) {
+        // ניצחון!
+        document.getElementById('sst').textContent='🎉 פתחת את השער!';
+        setTimeout(() => {
+          document.getElementById('sim').className='';
+          gate.open=true; questStep=5;
+          showD('👧 אור',
+            'פוליייי!!! 🎉🎉 פתחת את שער הקסם! אתה הכי טוב בעולם! 💜🐾', 5500);
+          setQ('✅ הצלחת! 🏆');
+          setTimeout(() => {
+            document.getElementById('ws').style.display='flex';
+          }, 5800);
+        }, 2000);
+      } else {
+        sLvl++;
+        document.getElementById('sst').textContent='✅ מעולה! ממשיכים...';
+        sBlk=true;
+        setTimeout(() => nextRound(), 1200);
+      }
+    }
+  });
+});
+
+// ================================================
+//  סקיילינג אוטומטי לנייד
+// ================================================
+function scaleGame() {
+  const gw   = document.getElementById('gw');
+  const vw   = window.innerWidth;
+  const vh   = window.innerHeight;
+  const scaleX = vw  / 800;
+  const scaleY = vh  / 560;
+  const scale  = Math.min(scaleX, scaleY, 1); // לא מגדיל מעל 100%
+  gw.style.transform = `scale(${scale})`;
+  // מרכז אנכית
+  const top = Math.max(0, (vh - 560*scale) / 2);
+  gw.style.marginTop = top + 'px';
+}
+scaleGame();
+window.addEventListener('resize', scaleGame);
+// כפתור אינטרקציה נייד
+const actBtn = document.getElementById('actBtn');
+actBtn.addEventListener('pointerdown', e => { e.preventDefault(); mk['act']=true; });
+actBtn.addEventListener('pointerup',   ()=> { mk['act']=false; });
+actBtn.addEventListener('pointerleave',()=> { mk['act']=false; });
+
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('ts').style.display='none';
+  gameActive=true;
+  initGame();
+});
+document.getElementById('restartBtn').addEventListener('click', () => {
+  document.getElementById('ws').style.display='none';
+  initGame();
+});
+
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
