@@ -114,7 +114,6 @@ canvas{display:block;border-radius:16px;
 }
 .db:active{background:rgba(124,58,237,.8);transform:scale(.93);}
 
-/* כפתור אינטרקציה נייד */
 #actBtn{
   position:absolute;
   bottom:74px;right:10px;
@@ -200,6 +199,19 @@ canvas{display:block;border-radius:16px;
     <div class="sstatus" id="sst">צפה ברצף...</div>
   </div>
 
+  <!-- מבוך השלב השלישי -->
+  <div id="mazeScreen" style="position:absolute;inset:0;background:rgba(5,2,15,.97);border-radius:16px;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:10px;z-index:20;">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:600px;padding:0 4px;">
+      <div style="font-size:15px;color:#fca5a5;font-weight:700;">🚨 בורח מהכלב!</div>
+      <div id="mazeLives" style="font-size:22px;letter-spacing:3px;">❤️❤️❤️</div>
+      <div style="font-size:15px;color:#86efac;">הגע לאור 👧 🎁</div>
+    </div>
+    <canvas id="mazeCanvas" width="600" height="440"
+      style="border-radius:10px;border:2px solid #7c3aed66;box-shadow:0 0 40px #7c3aed44;"></canvas>
+    <div style="font-size:12px;color:#a78bfa;opacity:.8;">חצים / WASD לזוז — הכלב מתחיל לרדוף בעוד רגע!</div>
+  </div>
+
   <!-- כפתורי מובייל -->
   <div id="dpad">
     <div class="drow"><div class="db" data-d="up">▲</div></div>
@@ -210,33 +222,44 @@ canvas{display:block;border-radius:16px;
     </div>
   </div>
 
-  <!-- כפתור אינטרקציה נייד -->
   <div id="actBtn">💬<br>דבר</div>
 </div>
 
 <script>
 // ================================================
-//  טעינת תמונת הספרייטים מהתיקייה
+//  טעינת תמונת הספרייטים
 // ================================================
 const SHEET = new Image();
 SHEET.src = 'sprites.png';
 
-// קואורדינטות מדויקות של כל ספרייט [x, y, רוחב, גובה]
+// קואורדינטות ספרייטים — גיליון 768x1024
+// [x, y, רוחב, גובה]
 const SPR = {
-  or_idle:   [18,  40,  103, 160],
-  or_walk:  [
-    [26,  244, 96,  133],
-    [170, 245, 95,  132],
-    [318, 244, 96,  133],
+  // אור
+  or_idle:      [ 19,  43, 115, 180],
+  or_walk: [
+    [ 28, 254, 106, 184],
+    [183, 256, 106, 182],
   ],
+  // פולי (כלב)
+  dog_idle:     [179,  99, 128, 113],
   dog_walk: [
-    [17,  871, 114, 106],
-    [156, 870, 127, 106],
+    [ 17, 882, 126, 104],
+    [169, 879, 138, 105],
   ],
-  dog_lie:  [300, 903, 133, 64],
+  dog_lie:      [324, 912, 146,  64],
+  // נריה
+  neria_idle:   [360,  35,  81, 194],
+  neria_walk: [
+    [341, 254, 106, 184],
+    [499, 255,  88, 187],
+  ],
+  // פיטבול
+  pitbull_front:[348, 675, 122, 156],
+  pitbull_side: [491, 679, 116, 145],
+  pitbull_run:  [538, 855, 202, 136],
 };
 
-// פונקציה לציור ספרייט (עם אפשרות להפוך אופקית)
 function drawSpr(ctx, frame, dx, dy, dw, dh, flipX=false) {
   if (!SHEET.complete || SHEET.naturalWidth === 0) return;
   const [sx, sy, sw, sh] = frame;
@@ -254,7 +277,7 @@ function drawSpr(ctx, frame, dx, dy, dw, dh, flipX=false) {
 }
 
 // ================================================
-//  כוכבים במסכי פתיחה/ניצחון
+//  כוכבים
 // ================================================
 function makeStars(id, n) {
   const c = document.getElementById(id);
@@ -271,21 +294,20 @@ function makeStars(id, n) {
 makeStars('st1', 80);
 makeStars('st2', 80);
 
-// תצוגת דמויות במסך הפתיחה
 SHEET.onload = () => {
+  // פולי — מסך פתיחה
   const pp = document.getElementById('pp').getContext('2d');
-  pp.imageSmoothingEnabled = true;
-  pp.imageSmoothingQuality = 'high';
+  pp.imageSmoothingEnabled = true; pp.imageSmoothingQuality = 'high';
   const [psx,psy,psw,psh] = SPR.dog_walk[0];
-  const ps = 90 / psh;
-  pp.drawImage(SHEET, psx,psy,psw,psh, (80-psw*ps)/2, 5, psw*ps, 90);
+  const ps = 80 / psh;
+  pp.drawImage(SHEET, psx,psy,psw,psh, (80-psw*ps)/2, 10, psw*ps, 80);
 
+  // אור — מסך פתיחה
   const po = document.getElementById('po').getContext('2d');
-  po.imageSmoothingEnabled = true;
-  po.imageSmoothingQuality = 'high';
+  po.imageSmoothingEnabled = true; po.imageSmoothingQuality = 'high';
   const [osx,osy,osw,osh] = SPR.or_idle;
-  const os = 110 / osh;
-  po.drawImage(SHEET, osx,osy,osw,osh, (70-osw*os)/2, 5, osw*os, 110);
+  const os = 100 / osh;
+  po.drawImage(SHEET, osx,osy,osw,osh, (70-osw*os)/2, 5, osw*os, 100);
 };
 
 // ================================================
@@ -298,7 +320,6 @@ let tick = 0;
 
 const TILE=40, COLS=20, ROWS=14;
 
-// מפת העולם: 0=דשא 1=שביל 2=קיר 3=פרח 4=עץ
 const map = [
   [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
   [2,0,0,0,0,0,3,0,0,0,0,0,0,3,0,0,0,0,0,2],
@@ -316,7 +337,6 @@ const map = [
   [2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2],
 ];
 
-// מיקום שער הקסם במפה
 const GATE_COL=8, GATE_ROW=9;
 
 let poly, orChar, bone, gate, questStep, cooldown;
@@ -336,7 +356,7 @@ function initGame() {
 }
 
 // ================================================
-//  קלט מקלדת + מובייל
+//  קלט
 // ================================================
 const keys = {}, mk = {};
 
@@ -409,7 +429,6 @@ function checkInteract() {
   const gx    = gate.x+TILE/2, gy = gate.y+TILE/2;
   const dGate = Math.hypot((poly.x+poly.w/2)-gx, (poly.y+poly.h/2)-gy);
 
-  // איסוף עצם
   if (!bone.got && dBone < 50 && questStep >= 1) {
     bone.got = true; questStep = 2; cooldown = 25;
     Audio.pickup();
@@ -418,7 +437,6 @@ function checkInteract() {
     return;
   }
 
-  // שיחה עם אור — שלב 0
   if (questStep===0 && dOr<60) {
     if (act) {
       questStep=1; cooldown=30;
@@ -430,7 +448,6 @@ function checkInteract() {
     }
   }
 
-  // החזרת עצם לאור — שלב 2
   if (questStep===2 && dOr<60) {
     if (act) {
       questStep=3; cooldown=30;
@@ -442,7 +459,6 @@ function checkInteract() {
     }
   }
 
-  // שער — שלב 3
   if (questStep===3 && dGate<60) {
     if (act) {
       questStep=4; cooldown=30; hideD(); startSimon();
@@ -481,7 +497,6 @@ function drawWorld() {
       }
     }
   }
-  // קווי רשת עדינים
   ctx.strokeStyle='rgba(0,0,0,0.04)'; ctx.lineWidth=.5;
   for (let r=0;r<=ROWS;r++) {
     ctx.beginPath(); ctx.moveTo(0,r*TILE); ctx.lineTo(800,r*TILE); ctx.stroke();
@@ -527,31 +542,25 @@ function drawHint(x, y, txt) {
   ctx.fillText(txt, x, y-8);
 }
 
-// ================================================
-//  ציור דמות אור (NPC)
-// ================================================
 function drawOr() {
   const bob = Math.sin(tick/90) * 1.5;
   const dw=40, dh=52;
-  // צל
   ctx.fillStyle='rgba(0,0,0,0.18)';
   ctx.beginPath();
   ctx.ellipse(orChar.x+dw/2, orChar.y+dh+2+bob, 14,4, 0,0,Math.PI*2);
   ctx.fill();
-  // ספרייט
   const [sx,sy,sw,sh] = SPR.or_idle;
   const scale = dh/sh;
   const sdw = sw*scale;
   drawSpr(ctx, SPR.or_idle, orChar.x+(dw-sdw)/2, orChar.y+bob, sdw, dh);
 }
 
-// ================================================
-//  ציור פולי (שחקן)
-// ================================================
-function drawPoly() {
-  const isM = moving() && questStep!==4 && questStep!==5;
+// drawNeria — שמורה לשלב עתידי עם נריה
+function drawNeria() { /* לא פעיל עדיין */ }
 
-  // אנימציה
+function drawPoly() {
+  const isM = moving() && questStep!==4 && questStep!==5 && questStep!==6;
+
   if (isM) {
     poly.ftick++;
     if (poly.ftick > 12) { poly.ftick=0; poly.frame=(poly.frame+1)%2; }
@@ -559,7 +568,6 @@ function drawPoly() {
     poly.frame=0; poly.ftick=0;
   }
 
-  // כיוון
   let flipX = false;
   if (D.l() && isM) { flipX=true;  poly.lastDir='left';  }
   else if (D.r() && isM) { flipX=false; poly.lastDir='right'; }
@@ -569,13 +577,11 @@ function drawPoly() {
   const bob   = isM ? Math.sin(tick/110)*2.5 : 0;
   const dw=44, dh=44;
 
-  // צל
   ctx.fillStyle='rgba(0,0,0,0.18)';
   ctx.beginPath();
   ctx.ellipse(poly.x+dw/2, poly.y+dh+2+bob, 13,4, 0,0,Math.PI*2);
   ctx.fill();
 
-  // ספרייט — שמירת פרופורציות
   const [,, sw,sh] = frame;
   const scale = Math.min(dw/sw, dh/sh);
   const sdw=sw*scale, sdh=sh*scale;
@@ -583,14 +589,13 @@ function drawPoly() {
 }
 
 // ================================================
-//  לולאת המשחק הראשית
+//  לולאה ראשית
 // ================================================
 function loop() {
   tick++;
   if (!gameActive) { requestAnimationFrame(loop); return; }
 
-  // תנועת פולי
-  if (questStep!==4 && questStep!==5) {
+  if (questStep!==4 && questStep!==5 && questStep!==6) {
     let nx=poly.x, ny=poly.y;
     if (D.u()) ny -= poly.speed;
     if (D.d()) ny += poly.speed;
@@ -604,15 +609,14 @@ function loop() {
 
   checkInteract();
   if (questStep===4) simonTick();
+  if (questStep===5) mazeTick_fn();
 
-  // ציור
   drawWorld();
   drawGate();
   drawBone();
   drawOr();
   drawPoly();
 
-  // רמז לשחקן
   const cx = poly.x+poly.w/2, cy = poly.y;
   if (questStep===0 && distChars(poly,orChar)<60) drawHint(cx,cy,'[Space]');
   if (questStep===2 && distChars(poly,orChar)<60) drawHint(cx,cy,'[Space]');
@@ -676,7 +680,6 @@ sBtns.forEach(b => {
     setTimeout(() => lightBtn(-1,false), 200);
 
     if (i !== sSeq[sIn.length-1]) {
-      // טעות
       sLiv--; updLiv(); sBlk=true;
       Audio.simonWrong();
       if (sLiv<=0) {
@@ -692,19 +695,13 @@ sBtns.forEach(b => {
     if (sIn.length === sSeq.length) {
       Audio.simonRight();
       if (sLvl >= 4) {
-        // ניצחון!
         document.getElementById('sst').textContent='🎉 פתחת את השער!';
         setTimeout(() => {
           document.getElementById('sim').className='';
           gate.open=true; questStep=5;
-          Audio.stopBg();
-          Audio.win();
-          showD('👧 אור',
-            'פוליייי!!! 🎉🎉 פתחת את שער הקסם! אתה הכי טוב בעולם! 💜🐾', 5500);
-          setQ('✅ הצלחת! 🏆');
-          setTimeout(() => {
-            document.getElementById('ws').style.display='flex';
-          }, 5800);
+          showD('👧 אור', 'פתחת את השער! 🎉 עכשיו עבור את המבוך והגיע אלי! 🐾💨', 3500);
+          setQ('🌀 עבור את המבוך!');
+          setTimeout(() => { hideD(); mazeStart(); }, 3700);
         }, 2000);
       } else {
         sLvl++;
@@ -717,155 +714,437 @@ sBtns.forEach(b => {
 });
 
 // ================================================
-//  מערכת סאונד — Web Audio API (ללא קבצים חיצוניים)
+//  🌀 שלב המבוך — בריחה מהכלב התוקפני
 // ================================================
-const Audio = (() => {
-  let ctx = null;
+const MCELL = 40; // גודל תא פיקסלים
 
-  function init() {
-    if (ctx) return;
-    ctx = new (window.AudioContext || window.webkitAudioContext)();
+// מפת המבוך: 1=קיר, 0=שביל
+// כניסה: (col=0, row=1) | יציאה: (col=14, row=9)
+// מסלול פתרון: (0,1)→(1,1)→(1,2)→(1,3)→(2,3)→(3,3)→(3,4)→(3,5)→...→(14,9)
+const MAZE_MAP = [
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+  [0,0,1,0,0,0,1,0,0,0,0,0,1,0,1],
+  [1,0,1,0,1,0,1,0,1,1,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,1,0,0,0,1],
+  [1,1,1,0,1,1,1,1,1,0,1,1,1,0,1],
+  [1,0,0,0,0,0,0,0,1,0,0,0,0,0,1],
+  [1,0,1,1,1,1,1,0,1,1,1,0,1,1,1],
+  [1,0,1,0,0,0,1,0,0,0,1,0,0,0,1],
+  [1,0,1,0,1,0,1,1,1,0,1,0,1,0,1],
+  [1,0,0,0,1,0,0,0,0,0,0,0,1,0,0],
+  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+];
+
+const MZ_ROWS = 11, MZ_COLS = 15;
+const MZ_PSPEED = 7;   // פריימים בין תנועות שחקן
+const MZ_DSPEED = 15;  // פריימים בין תנועות כלב (יותר איטי)
+
+let mz = {
+  active:false, lives:3, tick:0,
+  pCol:0, pRow:1, pTimer:0, pDir:'right',
+  dCol:0, dRow:1, dTimer:0,
+  dDelay:90, // פריימים לפני שהכלב מתחיל לרדוף
+  mCtx:null
+};
+
+function mazeStart() {
+  const mc = document.getElementById('mazeCanvas');
+  mz.mCtx = mc.getContext('2d');
+  mz.lives = 3;
+  mz.active = true;
+  mzReset();
+  document.getElementById('mazeLives').textContent = '❤️❤️❤️';
+  document.getElementById('mazeScreen').style.display = 'flex';
+  // מוסיקת מתח
+  Audio.stopBg();
+  Audio.startChase();
+}
+
+function mzReset() {
+  mz.pCol=0; mz.pRow=1;
+  mz.dCol=0; mz.dRow=1;
+  mz.dDelay=90;
+  mz.pTimer=0; mz.dTimer=0;
+  mz.tick=0;
+}
+
+function mzUpdLives() {
+  document.getElementById('mazeLives').textContent =
+    '❤️'.repeat(mz.lives) + '🖤'.repeat(3-mz.lives);
+}
+
+// BFS — מוצא מסלול קצר ביותר מ-(fc,fr) ל-(tc,tr)
+function mzBFS(fc, fr, tc, tr) {
+  if (fc===tc && fr===tr) return [];
+  const queue=[[fc,fr,[]]];
+  const vis=new Set([`${fc},${fr}`]);
+  const dirs=[[1,0],[-1,0],[0,1],[0,-1]];
+  while(queue.length) {
+    const [c,r,path]=queue.shift();
+    for(const [dc,dr] of dirs) {
+      const nc=c+dc, nr=r+dr, key=`${nc},${nr}`;
+      if(nc>=0&&nc<MZ_COLS&&nr>=0&&nr<MZ_ROWS&&
+         MAZE_MAP[nr][nc]===0&&!vis.has(key)) {
+        const np=[...path,[nc,nr]];
+        if(nc===tc&&nr===tr) return np;
+        vis.add(key);
+        queue.push([nc,nr,np]);
+      }
+    }
+  }
+  return [];
+}
+
+function mazeTick_fn() {
+  if(!mz.active) return;
+  mz.tick++;
+
+  // ── תנועת שחקן ──
+  mz.pTimer++;
+  if(mz.pTimer >= MZ_PSPEED) {
+    mz.pTimer=0;
+    let nc=mz.pCol, nr=mz.pRow;
+    if     (D.u()){nr--; mz.pDir='up';}
+    else if(D.d()){nr++; mz.pDir='down';}
+    else if(D.l()){nc--; mz.pDir='left';}
+    else if(D.r()){nc++; mz.pDir='right';}
+    if(nc>=0&&nc<MZ_COLS&&nr>=0&&nr<MZ_ROWS&&MAZE_MAP[nr][nc]===0){
+      mz.pCol=nc; mz.pRow=nr;
+    }
   }
 
-  // נגן תו בודד
-  function playNote(freq, dur, type='sine', vol=0.3, delay=0) {
-    if (!ctx) return;
-    ctx.resume();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, ctx.currentTime + delay);
-    gain.gain.setValueAtTime(vol, ctx.currentTime + delay);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + dur);
-    osc.start(ctx.currentTime + delay);
-    osc.stop(ctx.currentTime + delay + dur + 0.05);
+  // ── עיכוב כלב ──
+  if(mz.dDelay>0){ mz.dDelay--; }
+  else {
+    // ── תנועת כלב (BFS) ──
+    mz.dTimer++;
+    if(mz.dTimer >= MZ_DSPEED) {
+      mz.dTimer=0;
+      const path=mzBFS(mz.dCol,mz.dRow,mz.pCol,mz.pRow);
+      if(path.length>0)[mz.dCol,mz.dRow]=path[0];
+    }
   }
 
-  // אפקט איסוף פריט ✨
-  function pickup() {
-    init();
-    [523, 659, 784, 1047].forEach((f,i) => playNote(f, 0.15, 'sine', 0.3, i*0.07));
+  // ── תפיסה ──
+  if(mz.dDelay<=0 && mz.dCol===mz.pCol && mz.dRow===mz.pRow) {
+    mz.lives--;
+    mzUpdLives();
+    playTone(160,.4,'sawtooth',.38);
+    playTone(120,.5,'sawtooth',.28,.12);
+    if(mz.lives<=0){ mz.lives=3; mzUpdLives(); }
+    mzReset();
+    return;
   }
 
-  // אפקט דיאלוג 💬
-  function talk() {
-    init();
-    playNote(440, 0.08, 'sine', 0.15);
-    playNote(550, 0.08, 'sine', 0.15, 0.09);
+  // ── ניצחון: הגיע ליציאה ──
+  if(mz.pCol===14 && mz.pRow===9) {
+    mz.active=false;
+    document.getElementById('mazeScreen').style.display='none';
+    questStep=6;
+    Audio.stopChase();
+    Audio.win();
+    showD('👧 אור','פולי!!! 🎉🎉 הצלחת לחמוק מהכלב! חטיפים לכולם! 🦴🍖💜', 5500);
+    setQ('✅ הצלחת! 🏆');
+    setTimeout(()=>{ document.getElementById('ws').style.display='flex'; }, 5800);
+    return;
   }
 
-  // אפקט ניצחון סיימון ✅
-  function simonRight() {
-    init();
-    playNote(660, 0.1, 'sine', 0.25);
-    playNote(880, 0.15, 'sine', 0.25, 0.12);
+  mzDraw();
+}
+
+function mzDraw() {
+  const c=mz.mCtx;
+  if(!c) return;
+
+  // רקע
+  c.fillStyle='#08041a';
+  c.fillRect(0,0,MZ_COLS*MCELL,MZ_ROWS*MCELL);
+
+  // תאים
+  for(let r=0;r<MZ_ROWS;r++) {
+    for(let col=0;col<MZ_COLS;col++) {
+      const x=col*MCELL, y=r*MCELL;
+      if(MAZE_MAP[r][col]===1) {
+        // קיר — סגול כהה עם גוון פנימי
+        c.fillStyle='#1e0b42';
+        c.fillRect(x,y,MCELL,MCELL);
+        c.fillStyle='#2d1360';
+        c.fillRect(x+2,y+2,MCELL-4,MCELL-4);
+        c.strokeStyle='#5b21b622';
+        c.lineWidth=1;
+        c.strokeRect(x+3,y+3,MCELL-6,MCELL-6);
+      } else {
+        // שביל
+        c.fillStyle='#100830';
+        c.fillRect(x,y,MCELL,MCELL);
+        c.fillStyle='#150a38';
+        c.fillRect(x+4,y+4,MCELL-8,MCELL-8);
+      }
+    }
   }
 
-  // אפקט טעות ❌
-  function simonWrong() {
-    init();
-    playNote(200, 0.3, 'sawtooth', 0.25);
-    playNote(150, 0.3, 'sawtooth', 0.2, 0.15);
+  // כניסה — ירוק עדין
+  c.fillStyle='rgba(22,163,74,.15)';
+  c.fillRect(0,MCELL,MCELL,MCELL);
+
+  // יציאה + אור עם פריזים
+  const ex=14*MCELL, ey=9*MCELL;
+  const glow=Math.sin(mz.tick/18)*0.4+0.6;
+  c.shadowColor='#22c55e'; c.shadowBlur=14*glow;
+  c.fillStyle=`rgba(22,163,74,${0.3*glow})`;
+  c.fillRect(ex,ey,MCELL,MCELL);
+  c.shadowBlur=0;
+  c.font='19px serif'; c.textAlign='center';
+  c.fillText('🎁',ex+MCELL/2,ey+MCELL/2+6);
+  // אור מחכה
+  c.font='21px serif';
+  const orBob=Math.sin(mz.tick/30)*2;
+  c.fillText('👧',ex+MCELL/2,ey-6+orBob);
+
+  // ── כלב אויב — פיטבול ──
+  const dx2=mz.dCol*MCELL, dy2=mz.dRow*MCELL;
+  const flipToPlayer = mz.pCol < mz.dCol;
+  const pbSpr = mz.dDelay>0 ? SPR.pitbull_front : SPR.pitbull_side;
+
+  // נקה את ה-cell לפני ציור — מונע artifacts מהגיליון
+  c.fillStyle='#2d1b5e';
+  c.fillRect(dx2+1, dy2+1, MCELL-2, MCELL-2);
+
+  if(mz.dDelay>0) {
+    c.globalAlpha = 1 - mz.dDelay/90;
+  } else {
+    c.shadowColor='#ef4444';
+    c.shadowBlur=12+Math.sin(mz.tick/7)*5;
+  }
+  if(SHEET.complete && SHEET.naturalWidth>0) {
+    const[sx,sy,sw,sh]=pbSpr;
+    // 1.4× המשבצת — ממלא יפה, מעט overflow
+    const DRAW = MCELL * 1.4;
+    const scale = Math.min(DRAW/sw, DRAW/sh);
+    const dw=sw*scale, dh=sh*scale;
+    const offX=dx2+(MCELL-dw)/2, offY=dy2+(MCELL-dh)/2;
+    c.save(); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+    if(flipToPlayer){
+      c.translate(offX+dw, offY); c.scale(-1,1);
+      c.drawImage(SHEET,sx,sy,sw,sh, 0,0, dw,dh);
+    } else {
+      c.drawImage(SHEET,sx,sy,sw,sh, offX,offY, dw,dh);
+    }
+    c.restore();
+  } else {
+    c.font='28px serif'; c.textAlign='center';
+    c.fillText('🐕',dx2+MCELL/2,dy2+MCELL/2+8);
+  }
+  c.shadowBlur=0; c.globalAlpha=1;
+  if(mz.dDelay>0 && mz.dDelay<60) {
+    c.fillStyle='#ef4444';
+    c.font=`bold 13px Varela Round,Arial`;
+    c.textAlign='center';
+    c.fillText(Math.ceil(mz.dDelay/30)+'!', dx2+MCELL/2, dy2-2);
   }
 
-  // אפקט ניצחון סופי 🎉
-  function win() {
-    init();
-    const melody = [523,659,784,1047,784,880,1047,1319];
-    melody.forEach((f,i) => playNote(f, 0.2, 'sine', 0.35, i*0.13));
+  // ── שחקן (פולי) ──
+  const px2=mz.pCol*MCELL, py2=mz.pRow*MCELL;
+
+  // נקה cell של פולי
+  c.fillStyle='#2d1b5e';
+  c.fillRect(px2+1, py2+1, MCELL-2, MCELL-2);
+
+  c.shadowColor='#a78bfa'; c.shadowBlur=10;
+  if(SHEET.complete && SHEET.naturalWidth>0) {
+    const frame = SPR.dog_walk[Math.floor(mz.tick/8)%2];
+    const[fsx,fsy,fsw,fsh]=frame;
+    const DRAW = MCELL * 1.4;
+    const scale=Math.min(DRAW/fsw, DRAW/fsh);
+    const dw=fsw*scale, dh=fsh*scale;
+    const offX=px2+(MCELL-dw)/2, offY=py2+(MCELL-dh)/2;
+    const flipX = mz.pDir==='left';
+    c.save(); c.imageSmoothingEnabled=true; c.imageSmoothingQuality='high';
+    if(flipX){ c.translate(offX+dw,offY); c.scale(-1,1); c.drawImage(SHEET,fsx,fsy,fsw,fsh,0,0,dw,dh); }
+    else { c.drawImage(SHEET,fsx,fsy,fsw,fsh,offX,offY,dw,dh); }
+    c.restore();
+  } else {
+    c.font='28px serif'; c.textAlign='center';
+    c.fillText('🐶',px2+MCELL/2,py2+MCELL/2+8);
   }
+  c.shadowBlur=0;
 
-  // מוסיקת רקע — מלודיה קסומה בלופ
-  let bgNodes = [];
-  let bgPlaying = false;
-  let bgTimeout = null;
+  // מיקוד מרחק מהכלב — אפקט אזהרה
+  if(mz.dDelay<=0) {
+    const dist=Math.abs(mz.pCol-mz.dCol)+Math.abs(mz.pRow-mz.dRow);
+    if(dist<=2) {
+      c.fillStyle=`rgba(239,68,68,${0.12+Math.sin(mz.tick/4)*0.08})`;
+      c.fillRect(px2-2,py2-2,MCELL+4,MCELL+4);
+    }
+  }
+}
 
-  // תווים של מלודיה קסומה/ילדותית
-  const bgMelody = [
-    [392,0.3],[440,0.3],[494,0.3],[523,0.6],
-    [494,0.3],[440,0.3],[392,0.6],
-    [350,0.3],[392,0.3],[440,0.3],[494,0.6],
-    [440,0.3],[392,0.3],[350,0.6],
-    [392,0.3],[494,0.3],[587,0.3],[659,0.6],
-    [587,0.3],[523,0.3],[494,0.6],
-    [440,0.3],[494,0.3],[523,0.3],[587,0.6],
-    [523,0.3],[494,0.3],[440,0.9],
+// ================================================ — Two-Clock Scheduler (השיטה היחידה שעובדת)
+//  מבוסס על "A Tale of Two Clocks" — Web Audio API best practice
+// ================================================
+let AC = null;
+
+function getAC() {
+  if (!AC) AC = new (window.AudioContext || window.webkitAudioContext)();
+  if (AC.state === 'suspended') AC.resume();
+  return AC;
+}
+
+// נגינת תו בזמן מוחלט
+function schedNote(ac, freq, when, dur, type, vol) {
+  const osc  = ac.createOscillator();
+  const gain = ac.createGain();
+  osc.connect(gain);
+  gain.connect(ac.destination);
+  osc.type = type;
+  osc.frequency.value = freq;
+  gain.gain.setValueAtTime(vol, when);
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + dur);
+  osc.start(when);
+  osc.stop(when + dur + 0.02);
+}
+
+// אפקטים — נגינה מיידית
+function playTone(freq, dur, type, vol, delay) {
+  try {
+    const ac = getAC();
+    const t  = ac.currentTime + (delay || 0) + 0.01;
+    schedNote(ac, freq, t, dur, type || 'sine', vol || 0.3);
+  } catch(e) {}
+}
+
+// ================================================
+//  מוסיקת רקע — Two-Clock scheduler
+//  שעון 1: setTimeout (JS) — מעיר את הפונקציה כל 25ms
+//  שעון 2: AC.currentTime  — מתזמן תווים בדיוק של מיקרושניות
+// ================================================
+const BG = (() => {
+  // המלודיה: [תדר, משך_שניות]
+  const MEL = [
+    [392,.28],[440,.28],[494,.28],[523,.56],
+    [494,.28],[440,.28],[392,.56],
+    [350,.28],[392,.28],[440,.28],[494,.56],
+    [440,.28],[392,.28],[350,.56],
+    [392,.28],[494,.28],[587,.28],[659,.56],
+    [587,.28],[523,.28],[494,.56],
+    [440,.28],[494,.28],[523,.28],[587,.56],
+    [523,.28],[494,.28],[440,.84],
+  ];
+  const BASS = [
+    [98,.56],[98,.56],[87,.56],[87,.56],
+    [82,.56],[82,.56],[87,.56],[87,.56],
   ];
 
-  // בס מלווה
-  const bgBass = [
-    [196,0.6],[196,0.6],[175,0.6],[175,0.6],
-    [165,0.6],[165,0.6],[175,0.6],[175,0.6],
-  ];
+  let playing     = false;
+  let timerID     = null;
 
-  function playBgLoop() {
-    if (!bgPlaying || !ctx) return;
+  // מצביע ומיקום זמן — מלודיה
+  let melIdx      = 0;
+  let melNextTime = 0;
 
-    let t = ctx.currentTime + 0.05;
+  // מצביע ומיקום זמן — בס
+  let bassIdx     = 0;
+  let bassNextTime= 0;
 
-    // מלודיה ראשית
-    bgMelody.forEach(([freq, dur]) => {
-      const osc  = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = 'triangle';
-      osc.frequency.setValueAtTime(freq, t);
-      gain.gain.setValueAtTime(0.12, t);
-      gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
-      osc.start(t); osc.stop(t + dur + 0.05);
-      t += dur;
-    });
+  const LOOKAHEAD = 0.12; // שניות קדימה לתזמן
+  const INTERVAL  = 25;   // ms בין בדיקות
 
-    const totalDur = bgMelody.reduce((s,[,d])=>s+d, 0);
+  function scheduler() {
+    if (!playing) return;
+    const ac = getAC();
+    const horizon = ac.currentTime + LOOKAHEAD;
 
-    // בס
-    let tb = ctx.currentTime + 0.05;
-    for (let rep=0; rep<4; rep++) {
-      bgBass.forEach(([freq,dur]) => {
-        const osc  = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, tb);
-        gain.gain.setValueAtTime(0.08, tb);
-        gain.gain.exponentialRampToValueAtTime(0.001, tb + dur * 0.8);
-        osc.start(tb); osc.stop(tb + dur + 0.05);
-        tb += dur;
-      });
+    // --- תזמן תווי מלודיה ---
+    while (melNextTime < horizon) {
+      const [f, d] = MEL[melIdx];
+      schedNote(ac, f, melNextTime, d * 0.82, 'triangle', 0.28);
+      melNextTime += d;
+      melIdx = (melIdx + 1) % MEL.length;
     }
 
-    // לולאה
-    bgTimeout = setTimeout(playBgLoop, totalDur * 1000);
+    // --- תזמן תווי בס ---
+    while (bassNextTime < horizon) {
+      const [f, d] = BASS[bassIdx];
+      schedNote(ac, f, bassNextTime, d * 0.72, 'sine', 0.15);
+      bassNextTime += d;
+      bassIdx = (bassIdx + 1) % BASS.length;
+    }
+
+    timerID = setTimeout(scheduler, INTERVAL);
   }
 
-  function startBg() {
-    init();
-    if (bgPlaying) return;
-    // חובה ב-Chrome/Mobile — resume אחרי gesture
-    ctx.resume().then(() => {
-      bgPlaying = true;
-      playBgLoop();
-    });
-  }
-
-  function stopBg() {
-    bgPlaying = false;
-    if (bgTimeout) clearTimeout(bgTimeout);
-  }
-
-  return { init, pickup, talk, simonRight, simonWrong, win, startBg, stopBg };
+  return {
+    start() {
+      if (playing) return;
+      playing = true;
+      const ac = getAC();
+      const t0 = ac.currentTime + 0.1;
+      melIdx = 0;  melNextTime  = t0;
+      bassIdx= 0;  bassNextTime = t0;
+      scheduler();
+    },
+    stop() {
+      playing = false;
+      if (timerID) { clearTimeout(timerID); timerID = null; }
+    }
+  };
 })();
 
+// מוסיקת מתח — מבוך
+const CHASE = (() => {
+  // מלודיה מהירה ומתוחה: תווים קצרים עולים-יורדים
+  const MEL = [
+    [330,.14],[294,.14],[262,.14],[247,.28],
+    [262,.14],[294,.14],[330,.14],[349,.28],
+    [330,.14],[311,.14],[294,.14],[277,.28],
+    [262,.14],[247,.14],[233,.14],[220,.42],
+    [262,.14],[294,.14],[330,.14],[370,.14],[330,.28],
+    [294,.14],[262,.14],[247,.14],[233,.28],
+    [220,.14],[233,.14],[247,.14],[262,.14],[247,.28],
+    [233,.14],[220,.14],[207,.14],[196,.42],
+  ];
+  const BASS = [
+    [98,.28],[98,.14],[98,.14],
+    [87,.28],[87,.14],[87,.14],
+    [82,.28],[82,.14],[82,.14],
+    [87,.28],[87,.14],[87,.14],
+  ];
+  let playing=false, timerID=null;
+  let mIdx=0, mNext=0, bIdx=0, bNext=0;
+  function sch() {
+    if(!playing) return;
+    const ac=getAC(), hz=ac.currentTime+0.12;
+    while(mNext<hz){ const[f,d]=MEL[mIdx]; schedNote(ac,f,mNext,d*.78,'square',.18); mNext+=d; mIdx=(mIdx+1)%MEL.length; }
+    while(bNext<hz){ const[f,d]=BASS[bIdx]; schedNote(ac,f,bNext,d*.68,'sine',.12); bNext+=d; bIdx=(bIdx+1)%BASS.length; }
+    timerID=setTimeout(sch,25);
+  }
+  return {
+    start(){ if(playing)return; playing=true; const ac=getAC(),t0=ac.currentTime+0.1; mIdx=0;mNext=t0;bIdx=0;bNext=t0; sch(); },
+    stop(){ playing=false; if(timerID){clearTimeout(timerID);timerID=null;} }
+  };
+})();
+
+const Audio = {
+  pickup()     { [523,659,784,1047].forEach((f,i)=>playTone(f,.18,'sine',.38,i*.08)); },
+  talk()       { playTone(440,.1,'sine',.22); playTone(550,.1,'sine',.22,.12); },
+  simonRight() { playTone(660,.13,'sine',.32); playTone(880,.18,'sine',.32,.14); },
+  simonWrong() { playTone(180,.4,'sawtooth',.32); playTone(140,.4,'sawtooth',.28,.18); },
+  win()        { [523,659,784,1047,784,880,1047,1319].forEach((f,i)=>playTone(f,.25,'sine',.42,i*.14)); },
+  startBg()    { BG.start(); },
+  stopBg()     { BG.stop();  },
+
+  // מוסיקת מתח למבוך
+  startChase() { CHASE.start(); },
+  stopChase()  { CHASE.stop();  },
+};
+
 // ================================================
-//  סקיילינג אוטומטי לנייד
+//  סקיילינג
 // ================================================
 function scaleGame() {
   const gw  = document.getElementById('gw');
   const vw  = window.innerWidth;
   const vh  = window.innerHeight;
-  // מלא את המסך לחלוטין — גם בנייד
   const scale = Math.min(vw / 800, vh / 560);
   gw.style.transform       = `scale(${scale})`;
   gw.style.transformOrigin = 'top left';
@@ -876,20 +1155,33 @@ function scaleGame() {
 scaleGame();
 window.addEventListener('resize', scaleGame);
 screen.orientation && screen.orientation.addEventListener('change', scaleGame);
-// כפתור אינטרקציה נייד
+
 const actBtn = document.getElementById('actBtn');
 actBtn.addEventListener('pointerdown', e => { e.preventDefault(); mk['act']=true; });
 actBtn.addEventListener('pointerup',   ()=> { mk['act']=false; });
 actBtn.addEventListener('pointerleave',()=> { mk['act']=false; });
 
+// מוסיקה מתחילה בכל אינטרקציה ראשונה — עכבר / מגע / מקלדת — כבר בדף הבית
+function _startMusicOnce() {
+  getAC();
+  Audio.startBg();
+  ['pointerdown','keydown','touchstart'].forEach(e =>
+    document.removeEventListener(e, _startMusicOnce));
+}
+['pointerdown','keydown','touchstart'].forEach(e =>
+  document.addEventListener(e, _startMusicOnce, { once: true }));
+
 document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('ts').style.display='none';
-  Audio.startBg();
-  gameActive=true;
+  gameActive = true;
   initGame();
 });
+
 document.getElementById('restartBtn').addEventListener('click', () => {
   document.getElementById('ws').style.display='none';
+  document.getElementById('mazeScreen').style.display='none';
+  mz.active = false;
+  Audio.startBg();
   initGame();
 });
 
