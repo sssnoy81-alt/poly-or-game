@@ -173,24 +173,18 @@ canvas{display:block;border-radius:16px;
     <button class="btn" id="startBtn">🚀 התחל הרפתקה!</button>
   </div>
 
-  <!-- מסך ניצחון ביניים — אחרי המבוך -->
-  <div class="screen" id="ws">
-    <div class="stars" id="st2"></div>
-    <div style="font-size:54px" class="bounce">🎉</div>
-    <div class="wtitle">פולי ניצח!</div>
-    <div class="wsub">עברת את המבוך! 🌀✨<br>אבל מישהו עוד בדרך...</div>
-    <div style="font-size:28px;margin:4px 0;">🏃 נריה מגיע לבקר!</div>
-    <button class="btn btn-g" id="neriaBtn">▶ שלב נריה</button>
-    <button class="btn" id="restartBtn" style="font-size:13px;padding:8px 20px;margin-top:4px;">🔄 שחק שוב</button>
-  </div>
-
   <!-- מסך ניצחון סופי -->
   <div class="screen" id="finalWin" style="display:none;background:radial-gradient(ellipse at 50% 40%,#1a3a1a,#0d1f12);border:2px solid #22c55e44;">
     <div class="stars" id="st3"></div>
     <div style="font-size:60px" class="bounce">🏆</div>
     <div class="wtitle">ניצחון מלא!</div>
-    <div class="wsub">נריה הגיע! פולי, אור ונריה יחד! 🎊💜🐾</div>
+    <div class="wsub">פולי, אור ונריה יחד! 🎊💜🐾<br>הקסם חזר לחצר ✨</div>
     <button class="btn btn-g" id="restartBtn2">🔄 שחק שוב</button>
+  </div>
+
+  <!-- מסך ביניים (לא בשימוש) -->
+  <div class="screen" id="ws" style="display:none;">
+    <button class="btn" id="restartBtn">🔄 שחק שוב</button>
   </div>
 
   <!-- פאזל סיימון -->
@@ -882,10 +876,9 @@ function mazeTick_fn() {
     document.getElementById('mazeScreen').style.display='none';
     questStep=6;
     Audio.stopChase();
-    Audio.win();
-    showD('👧 אור','פולי!!! 🎉🎉 הצלחת לחמוק מהכלב! חטיפים לכולם! 🦴🍖💜', 5500);
-    setQ('✅ הצלחת! 🏆');
-    setTimeout(()=>{ document.getElementById('ws').style.display='flex'; }, 5800);
+    showD('👧 אור','פולי!!! 🎉 הצלחת! ועכשיו... נריה מגיע לבקר! 🏃💨', 4000);
+    setQ('🏃 נריה בדרך!');
+    setTimeout(()=>{ hideD(); neriaStart(); }, 4200);
     return;
   }
 
@@ -1220,10 +1213,13 @@ document.getElementById('startBtn').addEventListener('click', () => {
 document.getElementById('restartBtn').addEventListener('click', () => {
   document.getElementById('ws').style.display='none';
   document.getElementById('mazeScreen').style.display='none';
-  mz.active = false;
-  Audio.startBg();
-  initGame();
+  document.getElementById('neriaScreen').style.display='none';
+  document.getElementById('finalWin').style.display='none';
+  NR.active=false; mz.active=false;
+  Audio.startBg(); initGame();
 });
+
+
 
 // ================================================
 //  🏃 שלב נריה — ריצה צדדית עם מכשולים
@@ -1324,6 +1320,7 @@ function neriaTick(){
     if(NR.endTimer>200){
       NR.active=false;
       document.getElementById('neriaScreen').style.display='none';
+      document.getElementById('neriaDpad').style.display='none';
       document.getElementById('finalWin').style.display='flex';
       Audio.win();
     }
@@ -1460,16 +1457,14 @@ function neriaUpdLives(){
   document.getElementById('neriaLives').textContent=['','❤️','❤️❤️','❤️❤️❤️'][Math.max(0,NR.lives)]||'';
 }
 
-document.getElementById('neriaBtn').addEventListener('click',()=>{
-  document.getElementById('ws').style.display='none';
-  neriaStart();
-});
+// neriaBtn הוסר — שלב נריה מתחיל אוטומטית מהכפתור הראשי
 
 document.getElementById('restartBtn2').addEventListener('click',()=>{
   document.getElementById('finalWin').style.display='none';
   document.getElementById('neriaScreen').style.display='none';
   document.getElementById('mazeScreen').style.display='none';
-  NR.active=false; mz.active=false;
+  document.getElementById('ws').style.display='none';
+  NR.active=false; mz.active=false; gameActive=false;
   Audio.startBg(); initGame();
 });
 
