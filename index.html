@@ -173,16 +173,24 @@ canvas{display:block;border-radius:16px;
     <button class="btn" id="startBtn">🚀 התחל הרפתקה!</button>
   </div>
 
-  <!-- מסך ניצחון -->
+  <!-- מסך ניצחון ביניים — אחרי המבוך -->
   <div class="screen" id="ws">
     <div class="stars" id="st2"></div>
-    <div style="font-size:66px" class="bounce">🎉</div>
-    <div class="wtitle">ניצחתם!</div>
-    <div class="wsub">
-      פולי ואור פתחו את שער הקסם! 🌟<br>
-      הקסם חזר לחצר ✨
-    </div>
-    <button class="btn btn-g" id="restartBtn">🔄 שחק שוב</button>
+    <div style="font-size:54px" class="bounce">🎉</div>
+    <div class="wtitle">פולי ניצח!</div>
+    <div class="wsub">עברת את המבוך! 🌀✨<br>אבל מישהו עוד בדרך...</div>
+    <div style="font-size:28px;margin:4px 0;">🏃 נריה מגיע לבקר!</div>
+    <button class="btn btn-g" id="neriaBtn">▶ שלב נריה</button>
+    <button class="btn" id="restartBtn" style="font-size:13px;padding:8px 20px;margin-top:4px;">🔄 שחק שוב</button>
+  </div>
+
+  <!-- מסך ניצחון סופי -->
+  <div class="screen" id="finalWin" style="display:none;background:radial-gradient(ellipse at 50% 40%,#1a3a1a,#0d1f12);border:2px solid #22c55e44;">
+    <div class="stars" id="st3"></div>
+    <div style="font-size:60px" class="bounce">🏆</div>
+    <div class="wtitle">ניצחון מלא!</div>
+    <div class="wsub">נריה הגיע! פולי, אור ונריה יחד! 🎊💜🐾</div>
+    <button class="btn btn-g" id="restartBtn2">🔄 שחק שוב</button>
   </div>
 
   <!-- פאזל סיימון -->
@@ -218,6 +226,26 @@ canvas{display:block;border-radius:16px;
         <div class="db" data-d="down">▼</div>
         <div class="db" data-d="right">▶</div>
       </div>
+    </div>
+  </div>
+
+  <!-- שלב נריה — ריצה צדדית -->
+  <div id="neriaScreen" style="position:absolute;inset:0;background:linear-gradient(180deg,#87ceeb 0%,#b0e0ff 60%,#5a8f3a 60%,#3d6b25 100%);border-radius:16px;
+    display:none;flex-direction:column;align-items:center;justify-content:center;gap:8px;z-index:25;">
+    <div style="display:flex;justify-content:space-between;align-items:center;width:700px;padding:0 8px;">
+      <div style="font-size:15px;color:#1a1a2e;font-weight:700;">🏃 נריה בדרך לאור ופולי</div>
+      <div id="neriaLives" style="font-size:20px;letter-spacing:2px;">❤️❤️❤️</div>
+      <div id="neriaProgress" style="font-size:13px;color:#1a1a2e;font-weight:700;">0 / 8 מכשולים</div>
+    </div>
+    <canvas id="neriaCanvas" width="700" height="280"
+      style="border-radius:10px;border:2px solid #4a7c2a88;box-shadow:0 4px 20px #00000055;"></canvas>
+    <div style="font-size:13px;color:#1a1a2e;font-weight:600;">
+      ⬆️ קפוץ מעל בורות/שלוליות &nbsp;|&nbsp; ⬇️ התכופף תחת ענפים/ציפורים
+    </div>
+    <!-- כפתורי מובייל לנריה — רק למעלה/למטה -->
+    <div id="neriaDpad" style="display:none;position:absolute;bottom:12px;left:10px;flex-direction:column;align-items:center;gap:5px;z-index:30;">
+      <div class="db" data-d="up" style="width:70px;height:70px;font-size:28px;">⬆️</div>
+      <div class="db" data-d="down" style="width:70px;height:70px;font-size:28px;">⬇️</div>
     </div>
   </div>
 
@@ -619,6 +647,7 @@ function loop() {
   checkInteract();
   if (questStep===4) simonTick();
   if (questStep===5) mazeTick_fn();
+  if (NR && NR.active) neriaTick();
 
   drawWorld();
   drawGate();
@@ -1194,6 +1223,254 @@ document.getElementById('restartBtn').addEventListener('click', () => {
   mz.active = false;
   Audio.startBg();
   initGame();
+});
+
+// ================================================
+//  🏃 שלב נריה — ריצה צדדית עם מכשולים
+// ================================================
+const NR = {
+  x:110, y:0, vy:0, isDucking:false, isJumping:false,
+  frame:0, ftick:0, lives:3, active:false,
+  scroll:4, dist:0, obstaclesPassed:0, totalObstacles:8,
+  obstacles:[], nextObstacleIn:120, phase:'run',
+  endTimer:0, orX:0, ctx:null, tick:0, hitFlash:0,
+};
+const NR_GROUND=195, NR_JUMP_V=-13, NR_GRAVITY=0.65, NRW=700, NRH=280;
+
+const OB_TYPES=[
+  {id:'pit',    w:55, h:30, ground:true,  duck:false},
+  {id:'puddle', w:70, h:18, ground:true,  duck:false},
+  {id:'rock',   w:38, h:48, ground:true,  duck:false},
+  {id:'mud',    w:75, h:16, ground:true,  duck:false},
+  {id:'branch', w:85, h:20, ground:false, duck:true, yoff:68},
+  {id:'bird',   w:45, h:38, ground:false, duck:true, yoff:62},
+];
+
+function neriaStart(){
+  const cv=document.getElementById('neriaCanvas');
+  NR.ctx=cv.getContext('2d');
+  Object.assign(NR,{y:NR_GROUND,vy:0,isDucking:false,isJumping:false,
+    frame:0,ftick:0,lives:3,active:true,scroll:4,dist:0,
+    obstaclesPassed:0,obstacles:[],nextObstacleIn:120,
+    phase:'run',endTimer:0,orX:NRW+80,tick:0,hitFlash:0});
+  document.getElementById('neriaLives').textContent='❤️❤️❤️';
+  document.getElementById('neriaProgress').textContent='0 / 8 מכשולים';
+  document.getElementById('neriaScreen').style.display='flex';
+  document.getElementById('neriaDpad').style.display='flex';
+  Audio.stopBg(); Audio.startBg();
+}
+
+function neriaTick(){
+  if(!NR.active) return;
+  NR.tick++;
+  const c=NR.ctx;
+
+  // קלט
+  const jumpP=D.u(), duckP=D.d();
+
+  if(NR.phase==='run'){
+    if(jumpP && !NR.isJumping && !NR.isDucking){ NR.vy=NR_JUMP_V; NR.isJumping=true; }
+    NR.isDucking = duckP && !NR.isJumping;
+    NR.vy += NR_GRAVITY; NR.y += NR.vy;
+    if(NR.y>=NR_GROUND){ NR.y=NR_GROUND; NR.vy=0; NR.isJumping=false; }
+    NR.dist+=NR.scroll;
+
+    // אנימציה
+    if(++NR.ftick>=8){ NR.ftick=0; NR.frame=(NR.frame+1)%2; }
+
+    // יצירת מכשולים
+    if(--NR.nextObstacleIn<=0 && NR.obstaclesPassed<NR.totalObstacles){
+      const t=OB_TYPES[NR.obstacles.filter(o=>o.passed).length % OB_TYPES.length];
+      NR.obstacles.push({...t, x:NRW+20, passed:false});
+      NR.nextObstacleIn=120+Math.floor(Math.random()*60);
+    }
+
+    // עדכון מכשולים + התנגשות
+    for(let i=NR.obstacles.length-1;i>=0;i--){
+      const ob=NR.obstacles[i];
+      ob.x-=NR.scroll;
+      if(!ob.passed && ob.x+ob.w<NR.x){ ob.passed=true; NR.obstaclesPassed++;
+        document.getElementById('neriaProgress').textContent=NR.obstaclesPassed+' / 8 מכשולים'; }
+
+      if(!ob.passed && NR.hitFlash===0){
+        const nY=NR.isDucking?NR.y-32:NR.y-70, nH=NR.isDucking?32:70;
+        let oX=ob.x, oY, oW=ob.w, oH;
+        if(ob.ground){ oY=NR_GROUND-ob.h; oH=ob.h; if(ob.id==='pit'){oY=NR_GROUND-8;oH=8;} }
+        else{ oY=NR_GROUND-138+ob.yoff; oH=ob.h; }
+        if(NR.x+6<oX+oW && NR.x+32>oX && nY+8<oY+oH && nY+nH-8>oY){
+          NR.lives--; NR.hitFlash=60; neriaUpdLives();
+          if(NR.lives<=0){ NR.lives=3; neriaUpdLives();
+            NR.obstacles=[]; NR.obstaclesPassed=0; NR.nextObstacleIn=120;
+            document.getElementById('neriaProgress').textContent='0 / 8 מכשולים'; }
+        }
+      }
+      if(ob.x<-120) NR.obstacles.splice(i,1);
+    }
+    if(NR.hitFlash>0) NR.hitFlash--;
+
+    // כל המכשולים עברו
+    if(NR.obstaclesPassed>=NR.totalObstacles && NR.obstacles.every(o=>o.passed)){
+      NR.phase='ending'; NR.orX=NRW+80; NR.endTimer=0; NR.scroll=3;
+      NR.y=NR_GROUND; NR.vy=0; NR.isJumping=false;
+    }
+
+  } else if(NR.phase==='ending'){
+    NR.orX-=2.5; NR.endTimer++;
+    if(++NR.ftick>=8){ NR.ftick=0; NR.frame=(NR.frame+1)%2; }
+    if(NR.orX < NR.x+130){ NR.phase='done'; NR.endTimer=0; }
+
+  } else if(NR.phase==='done'){
+    if(++NR.endTimer===80) showD('👧 אור','נריה!! 🎉 הגעת! פולי כל כך שמח לראות אותך! 🐾💜',4000);
+    if(NR.endTimer>200){
+      NR.active=false;
+      document.getElementById('neriaScreen').style.display='none';
+      document.getElementById('finalWin').style.display='flex';
+      Audio.win();
+    }
+  }
+
+  neriaDraw();
+}
+
+function neriaDraw(){
+  const c=NR.ctx; const W=NRW, H=NRH, G=NR_GROUND;
+
+  // שמיים
+  const sky=c.createLinearGradient(0,0,0,G);
+  sky.addColorStop(0,'#5bb8e8'); sky.addColorStop(1,'#b8e0f7');
+  c.fillStyle=sky; c.fillRect(0,0,W,G);
+
+  // עננים
+  c.fillStyle='rgba(255,255,255,0.85)';
+  [[90,35,55,22],[280,22,70,25],[470,40,50,20],[620,28,65,23]].forEach(([x,y,rw,rh])=>{
+    const cx=((x-(NR.dist*0.25|0))%W+W*2)%(W+80);
+    c.beginPath(); c.ellipse(cx,y,rw,rh,0,0,Math.PI*2); c.fill();
+  });
+
+  // קרקע
+  const gnd=c.createLinearGradient(0,G,0,H);
+  gnd.addColorStop(0,'#5a8f3a'); gnd.addColorStop(0.2,'#4a7a2a'); gnd.addColorStop(1,'#3a5a1a');
+  c.fillStyle=gnd; c.fillRect(0,G,W,H-G);
+
+  // פסי דשא
+  c.fillStyle='#6aaf4a';
+  for(let gx=((-(NR.dist*1.5|0))%40+40)%40; gx<W; gx+=40) c.fillRect(gx,G,20,5);
+
+  // מכשולים
+  NR.obstacles.forEach(ob=>{
+    if(ob.ground){
+      if(ob.id==='pit'){
+        c.fillStyle='#0a0500'; c.fillRect(ob.x,G-2,ob.w,32);
+        c.fillStyle='#1a0800'; c.fillRect(ob.x+4,G+4,ob.w-8,24);
+        c.font='20px serif'; c.textAlign='center'; c.fillText('🕳️',ob.x+ob.w/2,G+18);
+      } else if(ob.id==='puddle'){
+        c.fillStyle='#3a90d9bb';
+        c.beginPath(); c.ellipse(ob.x+ob.w/2,G+5,ob.w/2,11,0,0,Math.PI*2); c.fill();
+        c.font='16px serif'; c.textAlign='center'; c.fillText('💧',ob.x+ob.w/2,G-2);
+      } else if(ob.id==='rock'){
+        c.fillStyle='#777';
+        c.beginPath(); c.ellipse(ob.x+ob.w/2,G-ob.h/2,ob.w/2,ob.h/2,0,0,Math.PI*2); c.fill();
+        c.fillStyle='#aaa';
+        c.beginPath(); c.ellipse(ob.x+ob.w/2-4,G-ob.h*0.65,ob.w/4,ob.h/5,-.3,0,Math.PI*2); c.fill();
+        c.font='26px serif'; c.textAlign='center'; c.fillText('🪨',ob.x+ob.w/2,G-ob.h/2+8);
+      } else if(ob.id==='mud'){
+        c.fillStyle='#5a3a1a';
+        c.beginPath(); c.ellipse(ob.x+ob.w/2,G+4,ob.w/2,13,0,0,Math.PI*2); c.fill();
+        c.font='16px serif'; c.textAlign='center'; c.fillText('🟫',ob.x+ob.w/2,G-2);
+      }
+    } else {
+      const oy=G-138+ob.yoff;
+      if(ob.id==='branch'){
+        c.fillStyle='#5a3a00'; c.fillRect(ob.x,oy,ob.w,ob.h);
+        for(let lx=ob.x;lx<ob.x+ob.w;lx+=22){
+          c.font='18px serif'; c.textAlign='left'; c.fillText('🌿',lx,oy+ob.h);
+        }
+      } else if(ob.id==='bird'){
+        const bo=Math.sin(NR.tick*.15)*7;
+        c.font='32px serif'; c.textAlign='center'; c.fillText('🐦',ob.x+ob.w/2,oy+bo+14);
+      }
+    }
+  });
+
+  // נריה
+  const nx=NR.x, ny=NR.y;
+  const dh=NR.isDucking?38:70;
+  if(NR.hitFlash>0 && NR.hitFlash%6<3) c.globalAlpha=0.4;
+  if(SHEET.complete && SHEET.naturalWidth>0){
+    const fr=SPR.neria_walk[NR.frame%2];
+    const [fsx,fsy,fsw,fsh]=fr;
+    const dw=dh*fsw/fsh;
+    c.save(); c.imageSmoothingEnabled=true;
+    c.drawImage(SHEET,fsx,fsy,fsw,fsh, nx-dw/2, ny-dh, dw,dh);
+    c.restore();
+  } else {
+    c.fillStyle='#4a7a2a'; c.fillRect(nx-14,ny-dh,28,dh);
+    c.fillStyle='#f4c88a'; c.beginPath(); c.arc(nx,ny-dh-12,13,0,Math.PI*2); c.fill();
+  }
+  c.globalAlpha=1;
+
+  // אור ופולי בסצנת סיום
+  if(NR.phase==='ending'||NR.phase==='done'){
+    const ox=NR.orX;
+    if(SHEET.complete && SHEET.naturalWidth>0){
+      const [fsx,fsy,fsw,fsh]=SPR.or_special;
+      const dh2=78, dw2=dh2*fsw/fsh;
+      c.save(); c.imageSmoothingEnabled=true;
+      c.drawImage(SHEET,fsx,fsy,fsw,fsh, ox-dw2/2, G-dh2, dw2,dh2);
+      c.restore();
+    } else {
+      c.font='38px serif'; c.textAlign='center'; c.fillText('👧🐶',ox,G-8);
+    }
+    c.fillStyle='#1a1a2e'; c.font='bold 12px Varela Round,Arial';
+    c.textAlign='center'; c.fillText('אור ופולי',ox,G-82);
+
+    if(NR.phase==='done' && NR.endTimer<80){
+      ['⭐','✨','🌟','💜','🎉'].forEach((e,i)=>{
+        const a=NR.endTimer*.1+i*1.25, r=50+NR.endTimer*.5;
+        c.font='20px serif'; c.textAlign='center';
+        c.fillText(e,(nx+ox)/2+Math.cos(a)*r, G-60+Math.sin(a)*r*.4);
+      });
+    }
+  }
+
+  // רמז
+  if(NR.phase==='run'){
+    const nxt=NR.obstacles.find(o=>!o.passed && o.x<NR.x+160);
+    if(nxt && nxt.x<NR.x+140){
+      const hint=nxt.duck?'⬇️ התכופף!':'⬆️ קפוץ!';
+      const al=Math.min(1,(NR.x+140-nxt.x)/70);
+      c.globalAlpha=al;
+      c.font='bold 17px Varela Round,Arial';
+      c.fillStyle=nxt.duck?'#fbbf24':'#34d399';
+      c.textAlign='center'; c.fillText(hint,nx,G-88);
+      c.globalAlpha=1;
+    }
+  }
+
+  // סרגל התקדמות
+  const bw=W-40, prog=Math.min(1,NR.obstaclesPassed/NR.totalObstacles);
+  c.fillStyle='rgba(0,0,0,0.3)'; c.fillRect(20,H-16,bw,9);
+  c.fillStyle=prog<0.5?'#f59e0b':prog<0.9?'#22c55e':'#a78bfa';
+  c.fillRect(20,H-16,bw*prog,9);
+  c.font='10px Arial'; c.fillStyle='white'; c.textAlign='center';
+  c.fillText('🏃 '+Math.round(prog*100)+'%',W/2,H-9);
+}
+
+function neriaUpdLives(){
+  document.getElementById('neriaLives').textContent=['','❤️','❤️❤️','❤️❤️❤️'][Math.max(0,NR.lives)]||'';
+}
+
+document.getElementById('neriaBtn').addEventListener('click',()=>{
+  document.getElementById('ws').style.display='none';
+  neriaStart();
+});
+
+document.getElementById('restartBtn2').addEventListener('click',()=>{
+  document.getElementById('finalWin').style.display='none';
+  document.getElementById('neriaScreen').style.display='none';
+  document.getElementById('mazeScreen').style.display='none';
+  NR.active=false; mz.active=false;
+  Audio.startBg(); initGame();
 });
 
 requestAnimationFrame(loop);
